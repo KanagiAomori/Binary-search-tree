@@ -45,7 +45,7 @@ int main (int argc, char* argv)
 // 1 file read and insert
     char* fileName = (char*) calloc(100, sizeof(char));
     char* buffer = (char*) calloc(BUFFSIZE, sizeof(char));
-    char c; // temp char for input
+    int c; // temp char for input
     int i; // counter
     int white = 0;
     FILE* fp;
@@ -53,11 +53,9 @@ int main (int argc, char* argv)
     scanf("%s", fileName);
     fp = fopen(fileName, "r");
     free(fileName);
-    if (fp != NULL){
+    if (fp != NULL) {
         textDisplay("Odczyt z pliku");
-        c = fgetc(fp);
-        fseek(fp, 0 , SEEK_CUR - 1);
-        while (c != EOF)
+        do
         {
             for (i = 0; i < BUFFSIZE && c != EOF; i++)
             {
@@ -67,8 +65,9 @@ int main (int argc, char* argv)
                     white = 1; // on space mode
                 else if (isSpace(c))
                     break;
-
-                *(buffer + i) = c;
+                if (c == EOF)   // solve of problem with last character EOF and conversion
+                    break;
+                *(buffer + i) = (char) c;
                 *(buffer + i + 1) = '\0';
             }
             if (white){
@@ -76,13 +75,12 @@ int main (int argc, char* argv)
                 tree_insert(&root, &treeCount, buffer);
                 white = 0;  // off space mode
             }
-        }
+        }while (c != EOF);
         free(buffer);
         fclose(fp);
-    } else{
+    } else {
         printf("error - file opening\n");
     }
-
 // 2 traverse and dispaly [inserted by lexical superiority]
     textDisplay("Sorted by lexical order");
     tree_traversal(root);
@@ -109,26 +107,26 @@ int main (int argc, char* argv)
         free((tempArray + i)->data);
     free(tempArray);
     textDisplay("Koniec Programu");
-
     return 0;
 }
 
 // git
 void tree_insert(struct tree ** l, int* treeCount, char * x)
 {
-            if(*l == NULL){
-                (*treeCount)++;
-                *l = tree_node(x);
-                return;
-            }
-            if( (strcmp(x, (*l)->data) == 0) ){    // word exist so increment count
-                (*l)->wordCount++;
-                return;
-            }
-            if(strcmp(x, (*l)->data) < 0)
-                return tree_insert(&(*l)->left, treeCount, x) ;
-            if(strcmp(x, (*l)->data) > 0)
-                return tree_insert(&(*l)->right, treeCount, x) ;
+    if(*l == NULL){
+        (*treeCount)++;
+        *l = tree_node(x);
+        return;
+    }
+    int compare = strcmp(x, (*l)->data);    // init temp result of compare after checking *l != NULL and we can acess data
+    if( compare == 0 ){    // word exist so increment count
+        (*l)->wordCount++;
+        return;
+    }
+    if( compare < 0)
+        return tree_insert(&(*l)->left, treeCount, x) ;
+    if( compare > 0)
+        return tree_insert(&(*l)->right, treeCount, x) ;
 }
 
 void tree_insertWC(struct tree ** l, Data x)
@@ -166,16 +164,33 @@ void tree_clean(tree** l)
     if((*l)->right != NULL)
         tree_clean(&(*l)->right);    
 }
+/*  version to insert tree into array of tree_nodes adresses
+*  
+*
+*
+*/
+
+/*
+void array_insert(tree *node, tree* arr[], int *i)
+{
+    if(node == NULL)
+        return ;
+    arr[*i].data = strdup(node->data);
+    arr[*i].wordCount = node->wordCount;
+    ++*i;
+    array_insert(node->left, arr, i);
+    array_insert(node->right, arr, i);
+}
+*/
 
 void array_insert(tree *node, Data* arr, int *i)
 {
     if(node == NULL)
         return ;
-
-    arr[*i].data = strdup(node->data);
+    array_insert(node->left, arr, i);
+    arr[*i].data = strdup(node->data);  // operations on
     arr[*i].wordCount = node->wordCount;
     ++*i;
-    array_insert(node->left, arr, i);
     array_insert(node->right, arr, i);
 }
 
@@ -195,12 +210,13 @@ bool isSpace(char c)
 void textDisplay(char* line)
 {
     int i = 0;
+    int len = strlen(line);
     printf("||");
-    for(i = 0; i < (strlen(line) + 2); i++)
+    for(i = 0; i < len + 2; i++)
         printf("-");
     printf("||\n");
     printf("|| %s ||\n||", line);
-    for(i = 0; i < (strlen(line) + 2); i++)
+    for(i = 0; i < len + 2; i++)
         printf("-");
     printf("||\n");
 }
@@ -221,13 +237,14 @@ void tree_traversal(struct tree* l) // display full tree
 // not used in program but standard tree functions for library
 struct tree * tree_search(struct tree *l, char * x)
 {   
-    if(strcmp(x, l->data) == 0)
-        return l ;
+    int compare = strcmp(x, l->data); 
     if(l == NULL)
         return NULL ;
-    if(strcmp(x, l->data) < 0)
+    if(compare == 0)
+        return l ;
+    if(compare < 0)
         tree_search(l->left, x) ;
-    else if(strcmp(x, l->data) > 0)
+    else if(compare > 0)
         tree_search(l->right, x) ;
 }
 
